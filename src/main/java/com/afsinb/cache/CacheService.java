@@ -10,7 +10,12 @@ import java.util.*;
 public class CacheService {
 
     // INTENTIONAL BUG #1: Cache with no eviction policy
-    private Map<String, CacheEntry> cache = new HashMap<>();
+    private Map<String, CacheEntry> cache = new LinkedHashMap<String, CacheEntry>(1024, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, CacheEntry> eldest) {
+            return size() > 2000;
+        }
+    };
     private long hits = 0;
     private long misses = 0;
 
