@@ -60,6 +60,7 @@ public class CacheController {
             @RequestParam(required = false) Boolean evictionEnabled,
             @RequestParam(required = false) Integer generationBurstMultiplier,
             @RequestParam(required = false) Boolean warningStormEnabled,
+            @RequestParam(required = false) Integer segmentSkewFailures,
             @RequestParam(required = false, defaultValue = "false") boolean clearCache
     ) {
         if (evictionEnabled != null) {
@@ -70,6 +71,9 @@ public class CacheController {
         }
         if (warningStormEnabled != null) {
             cacheService.setWarningStormEnabled(warningStormEnabled);
+        }
+        if (segmentSkewFailures != null) {
+            cacheService.injectSegmentSkewFailures(segmentSkewFailures);
         }
         if (clearCache) {
             cacheService.clearCache();

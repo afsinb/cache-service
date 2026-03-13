@@ -10,9 +10,10 @@ import java.util.*;
 public class CacheService {
 
     // Dynamic anomaly toggles for live demos
-    private volatile boolean evictionEnabled = false;
+    private volatile boolean evictionEnabled = true;
     private volatile int generationBurstMultiplier = 1;
     private volatile boolean warningStormEnabled = false;
+    private volatile int segmentSkewFailuresRemaining = 0;
 
     // INTENTIONAL BUG #1: cache grows unbounded when evictionEnabled=false
     private Map<String, CacheEntry> cache = new LinkedHashMap<String, CacheEntry>(1024, 0.75f, true) {
@@ -29,6 +30,12 @@ public class CacheService {
         try {
             int entryCount = 100 * Math.max(1, generationBurstMultiplier);
             for (int i = 0; i < entryCount; i++) {
+                if (segmentSkewFailuresRemaining > 0 && i == 0) {
+                    segmentSkewFailuresRemaining--;
+                    log.error("Synthetic unknown anomaly triggered: CacheSegmentSkewException. Remaining={}",
+                            segmentSkewFailuresRemaining);
+                    throw new CacheSegmentSkewException("Cache segment distribution skew detected");
+                }
                 String key = "cache_" + UUID.randomUUID().toString();
                 cache.put(key, new CacheEntry(key, "value_" + i, System.currentTimeMillis()));
             }
@@ -97,13 +104,27 @@ public class CacheService {
         log.warn("Anomaly toggle changed: warningStormEnabled={}", enabled);
     }
 
+    public void injectSegmentSkewFailures(int count) {
+        this.segmentSkewFailuresRemaining = Math.max(0, count);
+        log.warn("Unknown anomaly failures scheduled (CacheSegmentSkewException): {}",
+                this.segmentSkewFailuresRemaining);
+    }
+
     public Map<String, Object> anomalyState() {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("eviction_enabled", evictionEnabled);
         state.put("generation_burst_multiplier", generationBurstMultiplier);
         state.put("warning_storm_enabled", warningStormEnabled);
         state.put("cache_size", cache.size());
+        state.put("segment_skew_failures_remaining", segmentSkewFailuresRemaining);
         return state;
+    }
+
+    /** Custom unknown exception for UAC learning pipeline. */
+    static class CacheSegmentSkewException extends RuntimeException {
+        CacheSegmentSkewException(String message) {
+            super(message);
+        }
     }
 
     static class CacheEntry {
