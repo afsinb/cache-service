@@ -3,6 +3,7 @@ package com.afsinb.cache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Map;
 
 @Slf4j
@@ -47,5 +48,32 @@ public class CacheController {
             "hit_ratio", cacheService.getHitRatio(),
             "timestamp", System.currentTimeMillis()
         );
+    }
+
+    @GetMapping("/admin/anomalies")
+    public Map<String, Object> anomalyState() {
+        return cacheService.anomalyState();
+    }
+
+    @PostMapping("/admin/anomalies")
+    public Map<String, Object> configureAnomalies(
+            @RequestParam(required = false) Boolean evictionEnabled,
+            @RequestParam(required = false) Integer generationBurstMultiplier,
+            @RequestParam(required = false) Boolean warningStormEnabled,
+            @RequestParam(required = false, defaultValue = "false") boolean clearCache
+    ) {
+        if (evictionEnabled != null) {
+            cacheService.setEvictionEnabled(evictionEnabled);
+        }
+        if (generationBurstMultiplier != null) {
+            cacheService.setGenerationBurstMultiplier(generationBurstMultiplier);
+        }
+        if (warningStormEnabled != null) {
+            cacheService.setWarningStormEnabled(warningStormEnabled);
+        }
+        if (clearCache) {
+            cacheService.clearCache();
+        }
+        return cacheService.anomalyState();
     }
 }

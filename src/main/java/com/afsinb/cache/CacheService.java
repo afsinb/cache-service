@@ -9,11 +9,16 @@ import java.util.*;
 @Service
 public class CacheService {
 
-    // INTENTIONAL BUG #1: Cache with no eviction policy
+    // Dynamic anomaly toggles for live demos
+    private volatile boolean evictionEnabled = false;
+    private volatile int generationBurstMultiplier = 1;
+    private volatile boolean warningStormEnabled = false;
+
+    // INTENTIONAL BUG #1: cache grows unbounded when evictionEnabled=false
     private Map<String, CacheEntry> cache = new LinkedHashMap<String, CacheEntry>(1024, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, CacheEntry> eldest) {
-            return size() > 2000;
+            return evictionEnabled && size() > 2000;
         }
     };
     private long hits = 0;
@@ -22,16 +27,16 @@ public class CacheService {
     @Scheduled(fixedRate = 2000)
     public void generateCacheEntries() {
         try {
-            // INTENTIONAL BUG #2: Adding entries without cleanup
-            for (int i = 0; i < 100; i++) {
+            int entryCount = 100 * Math.max(1, generationBurstMultiplier);
+            for (int i = 0; i < entryCount; i++) {
                 String key = "cache_" + UUID.randomUUID().toString();
                 cache.put(key, new CacheEntry(key, "value_" + i, System.currentTimeMillis()));
             }
 
-            log.info("Cache entries added. Total: {}, Size: {}MB", cache.size(), getMemoryUsage());
+            log.info("Cache entries added. Total: {}, Size: {}MB, evictionEnabled={}, burstMultiplier={}",
+                    cache.size(), getMemoryUsage(), evictionEnabled, generationBurstMultiplier);
 
-            // INTENTIONAL BUG #3: Periodic memory warning
-            if (cache.size() % 500 == 0) {
+            if (warningStormEnabled || cache.size() % 500 == 0) {
                 log.warn("Cache size exceeding threshold: {} entries", cache.size());
             }
 
@@ -75,6 +80,30 @@ public class CacheService {
     public void clearCache() {
         cache.clear();
         log.info("Cache cleared");
+    }
+
+    public void setEvictionEnabled(boolean enabled) {
+        this.evictionEnabled = enabled;
+        log.warn("Anomaly toggle changed: evictionEnabled={}", enabled);
+    }
+
+    public void setGenerationBurstMultiplier(int multiplier) {
+        this.generationBurstMultiplier = Math.max(1, multiplier);
+        log.warn("Anomaly toggle changed: generationBurstMultiplier={}", this.generationBurstMultiplier);
+    }
+
+    public void setWarningStormEnabled(boolean enabled) {
+        this.warningStormEnabled = enabled;
+        log.warn("Anomaly toggle changed: warningStormEnabled={}", enabled);
+    }
+
+    public Map<String, Object> anomalyState() {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("eviction_enabled", evictionEnabled);
+        state.put("generation_burst_multiplier", generationBurstMultiplier);
+        state.put("warning_storm_enabled", warningStormEnabled);
+        state.put("cache_size", cache.size());
+        return state;
     }
 
     static class CacheEntry {
