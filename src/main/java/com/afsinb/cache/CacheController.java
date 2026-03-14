@@ -34,8 +34,10 @@ public class CacheController {
         return Map.of(
             "status", "UP",
             "service", "cache-service",
+            "errors", cacheService.getErrorCount(),
             "cache_size", cacheService.getCacheSize(),
             "memory_mb", cacheService.getMemoryUsage(),
+            "leak_size", 0,
             "hit_ratio", String.format("%.2f", cacheService.getHitRatio())
         );
     }
@@ -45,6 +47,7 @@ public class CacheController {
         return Map.of(
             "size", cacheService.getCacheSize(),
             "memory", cacheService.getMemoryUsage(),
+            "errors", cacheService.getErrorCount(),
             "hit_ratio", cacheService.getHitRatio(),
             "timestamp", System.currentTimeMillis()
         );
@@ -60,6 +63,8 @@ public class CacheController {
             @RequestParam(required = false) Boolean evictionEnabled,
             @RequestParam(required = false) Integer generationBurstMultiplier,
             @RequestParam(required = false) Boolean warningStormEnabled,
+            @RequestParam(required = false) Boolean raceModeEnabled,
+            @RequestParam(required = false) Boolean autoChaosEnabled,
             @RequestParam(required = false, defaultValue = "false") boolean clearCache
     ) {
         if (evictionEnabled != null) {
@@ -70,6 +75,12 @@ public class CacheController {
         }
         if (warningStormEnabled != null) {
             cacheService.setWarningStormEnabled(warningStormEnabled);
+        }
+        if (raceModeEnabled != null) {
+            cacheService.setRaceModeEnabled(raceModeEnabled);
+        }
+        if (autoChaosEnabled != null) {
+            cacheService.setAutoChaosEnabled(autoChaosEnabled);
         }
         if (clearCache) {
             cacheService.clearCache();
