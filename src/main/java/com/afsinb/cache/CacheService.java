@@ -10,7 +10,7 @@ import java.util.*;
 public class CacheService {
 
     // Dynamic anomaly toggles for live demos
-    private volatile boolean evictionEnabled = false;
+    private volatile boolean evictionEnabled = true;
     private volatile int generationBurstMultiplier = 1;
     private volatile boolean warningStormEnabled = false;
 
